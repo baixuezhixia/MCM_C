@@ -1,4 +1,6 @@
-# Li-ion Battery Data Analysis
+# Li-ion Battery Data Analysis / 锂离子电池数据分析
+
+[中文文档 / Chinese Documentation](README_CN.md)
 
 This repository contains analysis tools and results for Li-ion battery degradation experiments. The dataset includes test data from four Li-ion batteries (#53-56) subjected to various operational profiles at 4°C ambient temperature.
 
