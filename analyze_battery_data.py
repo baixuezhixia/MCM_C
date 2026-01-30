@@ -9,9 +9,8 @@ This script provides comprehensive analysis of battery charge, discharge, and im
 import scipy.io
 import numpy as np
 import matplotlib.pyplot as plt
-import pandas as pd
-from datetime import datetime
 import os
+import glob
 
 class BatteryDataAnalyzer:
     """Class to analyze Li-ion battery test data"""
@@ -34,9 +33,16 @@ class BatteryDataAnalyzer:
         print(f"\n{'='*60}")
         print(f"Loading data from {self.battery_id}")
         print(f"{'='*60}")
-        self.data = scipy.io.loadmat(self.mat_file, simplify_cells=True)
-        self.cycles = self.data[self.battery_id]['cycle']
-        print(f"Total cycles loaded: {len(self.cycles)}")
+        try:
+            self.data = scipy.io.loadmat(self.mat_file, simplify_cells=True)
+            if self.battery_id not in self.data:
+                raise KeyError(f"Battery ID '{self.battery_id}' not found in file")
+            self.cycles = self.data[self.battery_id]['cycle']
+            print(f"Total cycles loaded: {len(self.cycles)}")
+        except FileNotFoundError:
+            raise FileNotFoundError(f"File not found: {self.mat_file}")
+        except Exception as e:
+            raise RuntimeError(f"Error loading data from {self.mat_file}: {str(e)}")
         
     def get_cycle_types(self):
         """Get statistics about cycle types"""
@@ -278,8 +284,10 @@ class BatteryDataAnalyzer:
             print(f"  Number of discharge cycles: {len(capacities)}")
             print(f"  Initial capacity: {capacities[0]:.4f} Ahr")
             print(f"  Final capacity: {capacities[-1]:.4f} Ahr")
-            print(f"  Capacity fade: {capacities[0] - capacities[-1]:.4f} Ahr "
-                  f"({100 * (capacities[0] - capacities[-1]) / capacities[0]:.2f}%)")
+            fade = capacities[0] - capacities[-1]
+            # Avoid division by zero
+            fade_pct = 100 * fade / capacities[0] if capacities[0] != 0 else 0
+            print(f"  Capacity fade: {fade:.4f} Ahr ({fade_pct:.2f}%)")
             print(f"  Average capacity: {np.mean(capacities):.4f} Ahr")
             print(f"  Min capacity: {np.min(capacities):.4f} Ahr")
             print(f"  Max capacity: {np.max(capacities):.4f} Ahr")
@@ -369,8 +377,9 @@ def compare_batteries(mat_files, output_dir='output'):
 def main():
     """Main function to run the analysis"""
     # Find all .mat files in the current directory
-    import glob
-    mat_files = sorted(glob.glob('/home/runner/work/MCM_C/MCM_C/B*.mat'))
+    # Use relative path to make script portable
+    current_dir = os.path.dirname(os.path.abspath(__file__)) if '__file__' in globals() else os.getcwd()
+    mat_files = sorted(glob.glob(os.path.join(current_dir, 'B*.mat')))
     
     if not mat_files:
         print("No .mat files found!")
@@ -380,7 +389,7 @@ def main():
     for f in mat_files:
         print(f"  - {os.path.basename(f)}")
     
-    output_dir = '/home/runner/work/MCM_C/MCM_C/output'
+    output_dir = os.path.join(current_dir, 'output')
     
     # Analyze each battery individually
     for mat_file in mat_files:
